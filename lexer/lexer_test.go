@@ -51,3 +51,14 @@ func TestScanner(t *testing.T) {
 		}
 	}
 }
+
+func TestLexUnterminatedString(t *testing.T) {
+	const input = `"unterminated string`
+	scn := NewScanner(strings.NewReader(input))
+	for scn.Scan() {
+		scn.Token()
+	}
+	if scn.Err() != nil {
+		t.Errorf("expecting nil error, got %v", scn.Err())
+	}
+}

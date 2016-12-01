@@ -9,6 +9,8 @@ import (
 
 type TokenType int
 
+const eof rune = -1
+
 const (
 	EOF TokenType = iota
 	Word
@@ -41,6 +43,7 @@ type Scanner struct {
 	buf          *bytes.Buffer
 	position     int
 	lastRuneSize int // there is only ever need to read then unread one rune
+	err          error
 }
 
 func NewScanner(r io.Reader) *Scanner {
@@ -50,6 +53,13 @@ func NewScanner(r io.Reader) *Scanner {
 	}
 	s.current = s.next()
 	return s
+}
+
+func (s *Scanner) Err() error {
+	if s.err == io.EOF {
+		return nil
+	}
+	return s.err
 }
 
 func (s *Scanner) Scan() bool {
@@ -65,7 +75,8 @@ func (s *Scanner) Token() Token {
 func (s *Scanner) read() rune {
 	ch, n, err := s.src.ReadRune()
 	if err != nil {
-		return 0
+		s.err = err
+		return eof
 	}
 	s.position += n
 	s.lastRuneSize = n
@@ -80,7 +91,7 @@ func (s *Scanner) unread() {
 func (s *Scanner) peek() rune {
 	ch, _, err := s.src.ReadRune()
 	if err != nil {
-		return 0
+		return eof
 	}
 	s.src.UnreadRune()
 	return ch
@@ -102,7 +113,7 @@ func (s *Scanner) scanWord() Token {
 	start := s.position
 	for {
 		ch := s.read()
-		if isWhitespace(ch) || ch == 0 {
+		if isWhitespace(ch) || ch == eof {
 			s.unread()
 			break
 		}
@@ -145,7 +156,7 @@ func (s *Scanner) scanNumber() string {
 func (s *Scanner) scanString() string {
 	for {
 		ch := s.read()
-		if ch == '"' {
+		if ch == '"' || ch == eof {
 			break
 		}
 		s.buf.WriteRune(ch)
@@ -158,7 +169,7 @@ func (s *Scanner) scanString() string {
 func (s *Scanner) next() Token {
 	s.skipSpace()
 	peek := s.peek()
-	if peek == 0 {
+	if peek == eof {
 		return Token{Type: EOF}
 	}
 	start := s.position
