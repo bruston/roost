@@ -102,3 +102,43 @@ An if statement may contain an optional else:
 Outputs: `five`
 
 *Note*: The word `=` pops two values and compares them, pushing true if they are equal, else false.
+
+## Types
+
+Roost supports the following types:
+
+**String**
+
+`"string"`
+
+**Boolean**
+
+`true`, `false`
+
+**Number**
+
+64-bit float.
+
+`-5.5`, `5`, `-5`
+
+**Byte**
+
+Unsigned 8-bit int.
+
+`'5'`, `'a'`
+
+**Vector**
+
+A collection of arbitrary values that grows as needed.
+
+`{ 1 2 3 "foo" "bar" false }`
+
+New values are inserted at the end.
+
+**List**
+
+A singly linked-list of arbitrary values.
+
+`[ "foo" "bar" "baz" -5 false ]`
+
+New values are inserted at the front.
