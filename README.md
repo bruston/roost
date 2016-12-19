@@ -103,6 +103,34 @@ Outputs: `five`
 
 *Note*: The word `=` pops two values and compares them, pushing true if they are equal, else false.
 
+## Variables
+
+Most things are accomplished by manipulating the stack, but it is also possible to declare variables. Variables have global scope (at least for now).
+
+A variable is declared using the `var` keyword.
+
+```forth
+var foo
+```
+
+This creates a new empty value with the name `foo` and pushes a reference to it on the stack. It also defines a new word with the same name. When executed, the word simply pushes a reference to the variable on the stack.  A reference is used with the `!` and `@` words.
+
+With a reference to `foo` now on the stack, storing a variable looks like this:
+
+```forth
+"bar" !
+```
+
+`!` (store) expects to pop two values. First, "foo" the value to be stored then the variable reference. The value is stored in the `foo` variable declared previously.
+
+Loading a value stored in a variable is done using the `@` (fetch) word.
+
+```forth
+foo @
+```
+
+The value stored in `foo` is pushed on the stack.
+
 ## Types
 
 Roost supports the following types:
