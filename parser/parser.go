@@ -15,7 +15,7 @@ type Parser struct {
 	currentParent Appendable
 }
 
-func NewParser(r io.Reader) *Parser {
+func New(r io.Reader) *Parser {
 	p := &Parser{scn: lexer.NewScanner(r)}
 	return p
 }

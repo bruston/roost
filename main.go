@@ -27,7 +27,7 @@ func main() {
 	env := runtime.New(1024)
 	var p *parser.Parser
 	if len(os.Args) >= 2 {
-		p = parser.NewParser(input)
+		p = parser.New(input)
 		ast, err := p.Parse()
 		if err != nil {
 			log.Fatal(err)
@@ -41,7 +41,7 @@ func main() {
 	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
 		src := scanner.Bytes()
-		p = parser.NewParser(bytes.NewReader(src))
+		p = parser.New(bytes.NewReader(src))
 		ast, err := p.Parse()
 		if err != nil {
 			log.Print(err)
