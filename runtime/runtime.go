@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -74,6 +75,11 @@ func New(stackSize int) *Env {
 }
 
 func (ev *Evaluator) Visit(node parser.Node) parser.Visitor {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintln(ev.env.Stderr, "%s", r)
+		}
+	}()
 	switch n := node.(type) {
 	case *parser.NodeWordDef:
 		ev.env.Words[n.Identifier] = n
