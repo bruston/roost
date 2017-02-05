@@ -90,31 +90,6 @@ var Builtin = map[string]FuncValue{
 		e.Stack.Swap()
 	},
 	"I": func(e *Env) { e.Stack.Push(e.Return.Peek()) },
-	"map": func(e *Env) {
-		ref, ok := e.Stack.Pop().(RefValue)
-		if !ok {
-			return
-		}
-		collection := e.Stack.Peek()
-		var result Collection
-		if collection.Type() == ValueList {
-			result = &ListValue{ValueType: ValueList}
-		}
-		if collection.Type() == ValueVector {
-			result = &VectorValue{ValueType: ValueVector}
-		}
-		iterator, ok := collection.(Iterable)
-		if !ok {
-			return
-		}
-		fn := func(v Value) {
-			e.Stack.Push(v)
-			Eval(e, e.Words[ref.Key].Body)
-			result.Insert(e.Stack.Pop())
-		}
-		iterator.Iter(fn)
-		e.Stack.Push(result)
-	},
 	"insert": func(e *Env) {
 		val := e.Stack.Pop()
 		if collection, ok := e.Stack.Peek().(Collection); ok {
@@ -215,5 +190,4 @@ var Builtin = map[string]FuncValue{
 		}
 		e.Stack.Push(sizer.Len())
 	},
-	"make": func(e *Env) {},
 }

@@ -58,6 +58,17 @@ const (
 	VectorCollection
 )
 
+type BlobNode struct {
+	parent Appendable
+	body   []Node
+}
+
+func (b *BlobNode) Append(node Node) {
+	b.body = append(b.body, node)
+}
+
+func (b *BlobNode) Parent() Appendable { return b.parent }
+
 type NodeCollection struct {
 	Type   CollectionType
 	Body   []Node
@@ -192,7 +203,8 @@ func (p *Parser) Parse() ([]Node, error) {
 			p.currentParent = node
 		case lexer.BracketClose, lexer.BraceClose:
 			p.currentParent = p.currentParent.Parent()
-
+		case lexer.ParenOpen:
+		case lexer.ParenClose:
 		}
 	}
 	return p.tree, nil

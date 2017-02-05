@@ -155,7 +155,7 @@ Unsigned 8-bit int.
 
 `'5'`, `'a'`
 
-**Vector**
+**Slice**
 
 A collection of arbitrary values that grows as needed.
 
@@ -163,10 +163,61 @@ A collection of arbitrary values that grows as needed.
 
 New values are inserted at the end.
 
-**List**
+## Using Roost With Go
 
-A singly linked-list of arbitrary values.
+It is possible to embed roost in Go programs.
 
-`[ "foo" "bar" "baz" -5 false ]`
+```go
+package main
 
-New values are inserted at the front.
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path"
+
+	"github.com/bruston/roost/parser"
+	"github.com/bruston/roost/runtime"
+)
+
+func main() {
+	listen := flag.String("listen", ":8080", "host:port to listen on")
+	script := flag.String("script", "demo.roost", "path to roost script")
+	flag.Parse()
+	http.Handle("/hello/", scriptRunner{path: *script})
+	log.Fatal(http.ListenAndServe(*listen, nil))
+}
+
+type scriptRunner struct {
+	path string
+}
+
+func (s scriptRunner) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f, err := os.Open(s.path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+	p := parser.New(f)
+	ast, err := p.Parse()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	env := runtime.New(10)
+	env.Stack.PushString(path.Base(r.URL.Path))
+	runtime.Eval(env, ast)
+	if env.Stack.Len() == 1 && env.Stack.Peek().Type() == runtime.ValueString {
+		fmt.Fprintf(w, "%s\n", env.Stack.Pop().Value())
+	}
+}
+```
+
+With the script:
+
+```forth
+"Hello " swap +
+```

@@ -73,42 +73,8 @@ func (rv RefValue) Value() interface{} { return rv.Key }
 func (rv RefValue) String() string { return rv.Key }
 
 type Collection interface {
-	Iterable
 	Value
 	Insert(Value)
-}
-
-type ListElement struct {
-	Val  Value
-	Next *ListElement
-}
-
-func (le *ListElement) Value() interface{} { return le.Val }
-
-type ListValue struct {
-	ValueType
-	Length int
-	Head   *ListElement
-}
-
-func (lv ListValue) Value() interface{} { return lv }
-
-func (lv *ListValue) Insert(v Value) {
-	lv.Head = &ListElement{
-		Val:  v,
-		Next: lv.Head,
-	}
-	lv.Length++
-}
-
-func (lv *ListValue) Len() Value { return NumValue{ValueNum, float64(lv.Length)} }
-
-func (lv *ListValue) Iter(fn func(v Value)) {
-	cur := lv.Head
-	for cur != nil {
-		fn(cur.Val)
-		cur = cur.Next
-	}
 }
 
 type Indexable interface {
@@ -123,12 +89,6 @@ type VectorValue struct {
 func (vv *VectorValue) Value() interface{} { return vv.Val }
 
 func (vv *VectorValue) Insert(v Value) { vv.Val = append(vv.Val, v) }
-
-func (vv *VectorValue) Iter(fn func(v Value)) {
-	for _, v := range vv.Val {
-		fn(v)
-	}
-}
 
 func (vv *VectorValue) Index(v Value) Value {
 	switch n := v.(type) {
@@ -157,12 +117,6 @@ type BlobValue struct {
 
 func (bv *BlobValue) Value() interface{} { return bv.Val }
 
-func (bv *BlobValue) Iter(fn func(v Value)) {
-	for _, v := range bv.Val {
-		fn(ByteValue{ValueByte, v})
-	}
-}
-
 func (bv *BlobValue) Len() Value { return NumValue{ValueNum, float64(len(bv.Val))} }
 
 func (bv *BlobValue) Insert(v Value) {
@@ -187,7 +141,7 @@ func (bv *BlobValue) Index(v Value) Value {
 }
 
 type Iterable interface {
-	Iter(func(Value))
+	Iter(Value)
 }
 
 type PipeValue struct {

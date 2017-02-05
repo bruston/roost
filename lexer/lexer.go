@@ -22,6 +22,8 @@ const (
 	BracketClose
 	BraceOpen
 	BraceClose
+	ParenOpen
+	ParenClose
 	// Keywords
 	Var
 	If
@@ -195,6 +197,12 @@ func (s *Scanner) next() Token {
 	case '}':
 		s.read()
 		return Token{BraceClose, "}", start}
+	case '(':
+		s.read()
+		return Token{ParenOpen, "(", start}
+	case ')':
+		s.read()
+		return Token{ParenOpen, ")", start}
 	}
 	if unicode.IsDigit(peek) || peek == '-' {
 		tok := Token{Number, s.scanNumber(), start}

@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"os"
 
@@ -48,6 +48,8 @@ func (s *Stack) PushString(str string) { s.Push(StringValue{ValueString, str}) }
 
 func (s *Stack) PushBlob(b []byte) { s.Push(&BlobValue{ValueBlob, b}) }
 
+func (s *Stack) Len() int { return s.top + 1 }
+
 func NewStack(size int) *Stack { return &Stack{data: make([]Value, size), top: -1} }
 
 type Env struct {
@@ -58,7 +60,7 @@ type Env struct {
 	Stderr  io.Writer
 	Builtin map[string]FuncValue
 	Vars    map[string]Value
-	Words   map[string]*parser.NodeWordDef
+	Words   map[string]FuncValue
 }
 
 func New(stackSize int) *Env {
@@ -70,24 +72,32 @@ func New(stackSize int) *Env {
 		Stderr:  os.Stderr,
 		Builtin: Builtin,
 		Vars:    make(map[string]Value),
-		Words:   make(map[string]*parser.NodeWordDef),
+		Words:   make(map[string]FuncValue),
 	}
 }
+
+func funcFromDef(ev *Evaluator, n *parser.NodeWordDef) FuncValue {
+	return FuncValue(func(e *Env) {
+		for _, c := range n.Body {
+			parser.Walk(ev, c)
+		}
+	})
+}
+
+var ErrStackError = errors.New("stack under/overflow")
 
 func (ev *Evaluator) Visit(node parser.Node) parser.Visitor {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintln(ev.env.Stderr, "%s", r)
+			ev.err = ErrStackError
 		}
 	}()
 	switch n := node.(type) {
 	case *parser.NodeWordDef:
-		ev.env.Words[n.Identifier] = n
+		ev.env.Words[n.Identifier] = funcFromDef(ev, n)
 	case parser.NodeWord:
 		if word, ok := ev.env.Words[n.Identifier]; ok {
-			for _, c := range word.Body {
-				parser.Walk(ev, c)
-			}
+			word(ev.env)
 			return ev
 		}
 		if word, ok := ev.env.Builtin[n.Identifier]; ok {
@@ -99,10 +109,10 @@ func (ev *Evaluator) Visit(node parser.Node) parser.Visitor {
 		ev.env.Stack.PushNum(n.Value)
 	case parser.NodeVarDef:
 		ref := parser.NodeRef(n.Identifier)
-		ev.env.Words[n.Identifier] = &parser.NodeWordDef{
+		ev.env.Words[n.Identifier] = funcFromDef(ev, &parser.NodeWordDef{
 			Identifier: n.Identifier,
 			Body:       []parser.Node{ref},
-		}
+		})
 		ev.env.Stack.Push(RefValue{ValueRef, n.Identifier})
 	case parser.NodeRef:
 		ev.env.Stack.Push(RefValue{ValueRef, string(n)})
@@ -152,9 +162,6 @@ func newCollection(n parser.CollectionType) Collection {
 	if n == parser.VectorCollection {
 		return &VectorValue{ValueType: ValueVector}
 	}
-	if n == parser.ListCollection {
-		return &ListValue{ValueType: ValueList}
-	}
 	return nil
 }
 
@@ -183,15 +190,20 @@ func (ev *Evaluator) evalNode(node parser.Node) Value {
 	return nil
 }
 
-func Eval(env *Env, ast []parser.Node) {
+func Eval(env *Env, ast []parser.Node) error {
 	eval := &Evaluator{
 		env: env,
 	}
 	for _, node := range ast {
+		if eval.err != nil {
+			break
+		}
 		parser.Walk(eval, node)
 	}
+	return eval.err
 }
 
 type Evaluator struct {
 	env *Env
+	err error
 }
