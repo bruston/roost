@@ -209,7 +209,10 @@ func (s scriptRunner) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	env := runtime.New(10)
 	env.Stack.PushString(path.Base(r.URL.Path))
-	runtime.Eval(env, ast)
+	if err := runtime.Eval(env, ast); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
 	if env.Stack.Len() == 1 && env.Stack.Peek().Type() == runtime.ValueString {
 		fmt.Fprintf(w, "%s\n", env.Stack.Pop().Value())
 	}
