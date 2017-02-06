@@ -159,8 +159,8 @@ func (ev *Evaluator) Visit(node parser.Node) parser.Visitor {
 }
 
 func newCollection(n parser.CollectionType) Collection {
-	if n == parser.VectorCollection {
-		return &VectorValue{ValueType: ValueVector}
+	if n == parser.SliceCollection {
+		return &SliceValue{ValueType: ValueSlice}
 	}
 	return nil
 }

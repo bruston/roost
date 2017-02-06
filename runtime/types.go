@@ -12,7 +12,7 @@ const (
 	ValueString
 	ValueByte
 	ValueList
-	ValueVector
+	ValueSlice
 	ValueBlob
 	ValueBool
 	ValueRef
@@ -81,34 +81,34 @@ type Indexable interface {
 	Index(Value) Value
 }
 
-type VectorValue struct {
+type SliceValue struct {
 	ValueType
 	Val []Value
 }
 
-func (vv *VectorValue) Value() interface{} { return vv.Val }
+func (vv *SliceValue) Value() interface{} { return vv.Val }
 
-func (vv *VectorValue) Insert(v Value) { vv.Val = append(vv.Val, v) }
+func (vv *SliceValue) Insert(v Value) { vv.Val = append(vv.Val, v) }
 
-func (vv *VectorValue) Index(v Value) Value {
+func (vv *SliceValue) Index(v Value) Value {
 	switch n := v.(type) {
 	case NumValue:
 		return vv.Val[int(n.Val)]
-	case *VectorValue:
+	case *SliceValue:
 		if len(n.Val) < 2 {
 			return nil
 		}
 		start, _ := n.Val[0].(NumValue)
 		end, _ := n.Val[1].(NumValue)
-		return &VectorValue{
-			ValueVector,
+		return &SliceValue{
+			ValueSlice,
 			vv.Val[int(start.Val):int(end.Val)],
 		}
 	}
 	return nil
 }
 
-func (vv *VectorValue) Len() Value { return NumValue{ValueNum, float64(len(vv.Val))} }
+func (vv *SliceValue) Len() Value { return NumValue{ValueNum, float64(len(vv.Val))} }
 
 type BlobValue struct {
 	ValueType
@@ -129,7 +129,7 @@ func (bv *BlobValue) Index(v Value) Value {
 	switch n := v.(type) {
 	case NumValue:
 		return ByteValue{ValueByte, bv.Val[int(n.Val)]}
-	case *VectorValue:
+	case *SliceValue:
 		if len(n.Val) < 2 {
 			return nil
 		}

@@ -55,7 +55,7 @@ type CollectionType int
 
 const (
 	ListCollection CollectionType = iota
-	VectorCollection
+	SliceCollection
 )
 
 type BlobNode struct {
@@ -196,7 +196,7 @@ func (p *Parser) Parse() ([]Node, error) {
 			p.currentParent = node
 		case lexer.BraceOpen:
 			node := &NodeCollection{
-				Type:   VectorCollection,
+				Type:   SliceCollection,
 				parent: p.currentParent,
 			}
 			p.insertNode(node)
