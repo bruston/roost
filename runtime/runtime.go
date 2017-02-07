@@ -6,10 +6,11 @@ import (
 	"os"
 
 	"github.com/bruston/roost/parser"
+	"github.com/bruston/roost/types"
 )
 
 type Value interface {
-	Type() ValueType
+	Type() types.ValueType
 	Value() interface{}
 }
 
@@ -40,17 +41,19 @@ func (s *Stack) Swap() {
 	s.data[s.top], s.data[s.top-1] = s.data[s.top-1], s.data[s.top]
 }
 
-func (s *Stack) PushBool(b bool) { s.Push(BoolValue{ValueBool, b}) }
+func (s *Stack) PushBool(b bool) { s.Push(types.BoolValue{types.ValueBool, b}) }
 
-func (s *Stack) PushNum(n float64) { s.Push(NumValue{ValueNum, n}) }
+func (s *Stack) PushNum(n float64) { s.Push(types.NewNum(n)) }
 
-func (s *Stack) PushString(str string) { s.Push(StringValue{ValueString, str}) }
+func (s *Stack) PushString(str string) { s.Push(types.NewString(str)) }
 
-func (s *Stack) PushBlob(b []byte) { s.Push(&BlobValue{ValueBlob, b}) }
+func (s *Stack) PushBlob(b []byte) { s.Push(&types.BlobValue{types.ValueBlob, b}) }
 
 func (s *Stack) Len() int { return s.top + 1 }
 
 func NewStack(size int) *Stack { return &Stack{data: make([]Value, size), top: -1} }
+
+type FuncValue func(*Env)
 
 type Env struct {
 	Stack   *Stack
@@ -113,9 +116,9 @@ func (ev *Evaluator) Visit(node parser.Node) parser.Visitor {
 			Identifier: n.Identifier,
 			Body:       []parser.Node{ref},
 		})
-		ev.env.Stack.Push(RefValue{ValueRef, n.Identifier})
+		ev.env.Stack.Push(types.NewRef(n.Identifier))
 	case parser.NodeRef:
-		ev.env.Stack.Push(RefValue{ValueRef, string(n)})
+		ev.env.Stack.Push(types.NewRef(string(n)))
 	case *parser.NodeIf:
 		cond := ev.env.Stack.Pop()
 		if cond.Value() == true || cond.Value() == 1 {
@@ -134,7 +137,7 @@ func (ev *Evaluator) Visit(node parser.Node) parser.Visitor {
 		for {
 			index := ev.env.Return.Pop()
 			limit := ev.env.Return.Peek()
-			if index.Type() != ValueNum || limit.Type() != ValueNum {
+			if index.Type() != types.ValueNum || limit.Type() != types.ValueNum {
 				return ev
 			}
 			if index.Value().(float64) < limit.Value().(float64) || limit.Value().(float64) == 0 {
@@ -158,9 +161,9 @@ func (ev *Evaluator) Visit(node parser.Node) parser.Visitor {
 	return ev
 }
 
-func newCollection(n parser.CollectionType) Collection {
+func newCollection(n parser.CollectionType) types.Collection {
 	if n == parser.SliceCollection {
-		return &SliceValue{ValueType: ValueSlice}
+		return &types.SliceValue{ValueType: types.ValueSlice}
 	}
 	return nil
 }
@@ -168,9 +171,9 @@ func newCollection(n parser.CollectionType) Collection {
 func (ev *Evaluator) evalNode(node parser.Node) Value {
 	switch n := node.(type) {
 	case parser.NodeNumLit:
-		return NumValue{ValueNum, n.Value}
+		return types.NewNum(n.Value)
 	case parser.NodeStringLit:
-		return StringValue{ValueString, n.Value}
+		return types.NewString(n.Value)
 	case *parser.NodeCollection:
 		collection := newCollection(n.Type)
 		for _, c := range n.Body {
@@ -179,10 +182,10 @@ func (ev *Evaluator) evalNode(node parser.Node) Value {
 		return collection
 	case parser.NodeWord:
 		if n.Identifier == "true" {
-			return BoolValue{ValueBool, true}
+			return types.NewBool(true)
 		}
 		if n.Identifier == "false" {
-			return BoolValue{ValueBool, false}
+			return types.NewBool(false)
 		}
 	case parser.NodeRef:
 		// TODO

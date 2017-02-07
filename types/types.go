@@ -1,9 +1,14 @@
-package runtime
+package types
 
 import (
 	"fmt"
 	"io"
 )
+
+type Value interface {
+	Type() ValueType
+	Value() interface{}
+}
 
 type ValueType int
 
@@ -30,8 +35,10 @@ func (nv NumValue) Value() interface{} { return nv.Val }
 
 func (nv NumValue) String() string { return fmt.Sprintf("%v", nv.Val) }
 
+func NewNum(n float64) NumValue { return NumValue{ValueNum, n} }
+
 type Sizer interface {
-	Len() Value
+	Len() int
 }
 
 type StringValue struct {
@@ -43,7 +50,9 @@ func (sv StringValue) Value() interface{} { return sv.Val }
 
 func (sv StringValue) String() string { return sv.Val }
 
-func (sv StringValue) Len() Value { return NumValue{ValueNum, float64(len(sv.Val))} }
+func (sv StringValue) Len() int { return len(sv.Val) }
+
+func NewString(s string) StringValue { return StringValue{ValueString, s} }
 
 type ByteValue struct {
 	ValueType
@@ -52,7 +61,7 @@ type ByteValue struct {
 
 func (bv ByteValue) Value() interface{} { return bv.Val }
 
-type FuncValue func(env *Env)
+func NewByte(n byte) ByteValue { return ByteValue{ValueByte, n} }
 
 type BoolValue struct {
 	ValueType
@@ -63,6 +72,8 @@ func (bv BoolValue) Value() interface{} { return bv.Val }
 
 func (bv BoolValue) String() string { return fmt.Sprintf("%v", bv.Val) }
 
+func NewBool(b bool) BoolValue { return BoolValue{ValueBool, b} }
+
 type RefValue struct {
 	ValueType
 	Key string
@@ -71,6 +82,8 @@ type RefValue struct {
 func (rv RefValue) Value() interface{} { return rv.Key }
 
 func (rv RefValue) String() string { return rv.Key }
+
+func NewRef(k string) RefValue { return RefValue{ValueRef, k} }
 
 type Collection interface {
 	Value
@@ -108,7 +121,7 @@ func (vv *SliceValue) Index(v Value) Value {
 	return nil
 }
 
-func (vv *SliceValue) Len() Value { return NumValue{ValueNum, float64(len(vv.Val))} }
+func (vv *SliceValue) Len() int { return len(vv.Val) }
 
 type BlobValue struct {
 	ValueType
@@ -117,7 +130,7 @@ type BlobValue struct {
 
 func (bv *BlobValue) Value() interface{} { return bv.Val }
 
-func (bv *BlobValue) Len() Value { return NumValue{ValueNum, float64(len(bv.Val))} }
+func (bv *BlobValue) Len() int { return len(bv.Val) }
 
 func (bv *BlobValue) Insert(v Value) {
 	if b, ok := v.(ByteValue); ok {
@@ -146,10 +159,10 @@ type Iterable interface {
 
 type PipeValue struct {
 	ValueType
-	rwc io.ReadWriteCloser
+	Val io.ReadWriteCloser
 }
 
-func (pv *PipeValue) Value() interface{} { return pv.rwc }
+func (pv *PipeValue) Value() interface{} { return pv.Val }
 
 func (pv *PipeValue) Type() ValueType { return pv.ValueType }
 
@@ -161,7 +174,7 @@ func (fp *PipeValue) Write(v Value) (float64, error) {
 	case *BlobValue:
 		b = p.Val
 	}
-	n, err := fp.rwc.Write(b)
+	n, err := fp.Val.Write(b)
 	return float64(n), err
 }
 
@@ -169,4 +182,4 @@ func (pv *PipeValue) Read(b []byte) (float64, error) {
 	return 0, nil
 }
 
-func (fp *PipeValue) Close() error { return fp.rwc.Close() }
+func (fp *PipeValue) Close() error { return fp.Val.Close() }

@@ -4,40 +4,42 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/bruston/roost/types"
 )
 
 var Builtin = map[string]FuncValue{
 	"+": func(e *Env) {
 		n2, n1 := e.Stack.Pop(), e.Stack.Pop()
-		if n1.Type() == ValueNum && n2.Type() == ValueNum {
+		if n1.Type() == types.ValueNum && n2.Type() == types.ValueNum {
 			e.Stack.PushNum(n1.Value().(float64) + n2.Value().(float64))
 			return
 		}
-		if n1.Type() == ValueString && n2.Type() == ValueString {
+		if n1.Type() == types.ValueString && n2.Type() == types.ValueString {
 			e.Stack.PushString(n1.Value().(string) + n2.Value().(string))
 		}
 	},
 	"*": func(e *Env) {
 		n2, n1 := e.Stack.Pop(), e.Stack.Pop()
-		if n1.Type() == ValueNum && n2.Type() == ValueNum {
+		if n1.Type() == types.ValueNum && n2.Type() == types.ValueNum {
 			e.Stack.PushNum(n1.Value().(float64) * n2.Value().(float64))
 		}
 	},
 	"-": func(e *Env) {
 		n2, n1 := e.Stack.Pop(), e.Stack.Pop()
-		if n1.Type() == ValueNum && n2.Type() == ValueNum {
+		if n1.Type() == types.ValueNum && n2.Type() == types.ValueNum {
 			e.Stack.PushNum(n1.Value().(float64) - n2.Value().(float64))
 		}
 	},
 	"/": func(e *Env) {
 		n2, n1 := e.Stack.Pop(), e.Stack.Pop()
-		if n1.Type() == ValueNum && n2.Type() == ValueNum {
+		if n1.Type() == types.ValueNum && n2.Type() == types.ValueNum {
 			e.Stack.PushNum(n1.Value().(float64) / n2.Value().(float64))
 		}
 	},
 	"%": func(e *Env) {
 		n2, n1 := e.Stack.Pop(), e.Stack.Pop()
-		if n1.Type() == ValueNum && n2.Type() == ValueNum {
+		if n1.Type() == types.ValueNum && n2.Type() == types.ValueNum {
 			e.Stack.PushNum(float64(int64(n1.Value().(float64)) % int64(n2.Value().(float64))))
 		}
 	},
@@ -57,14 +59,14 @@ var Builtin = map[string]FuncValue{
 	"false": func(e *Env) { e.Stack.PushBool(false) },
 	"<": func(e *Env) {
 		n2, n1 := e.Stack.Pop(), e.Stack.Pop()
-		if n1.Type() != ValueNum || n2.Type() != ValueNum {
+		if n1.Type() != types.ValueNum || n2.Type() != types.ValueNum {
 			return
 		}
 		e.Stack.PushBool(n1.Value().(float64) < n2.Value().(float64))
 	},
 	">": func(e *Env) {
 		n2, n1 := e.Stack.Pop(), e.Stack.Pop()
-		if n1.Type() != ValueNum || n2.Type() != ValueNum {
+		if n1.Type() != types.ValueNum || n2.Type() != types.ValueNum {
 			return
 		}
 		e.Stack.PushBool(n1.Value().(float64) > n2.Value().(float64))
@@ -74,30 +76,27 @@ var Builtin = map[string]FuncValue{
 	},
 	"!": func(e *Env) {
 		val, name := e.Stack.Pop(), e.Stack.Pop()
-		if ref, ok := name.(RefValue); ok {
+		if ref, ok := name.(types.RefValue); ok {
 			e.Vars[ref.Key] = val
 		}
 	},
 	"@": func(e *Env) {
-		if ref, ok := e.Stack.Pop().(RefValue); ok {
+		if ref, ok := e.Stack.Pop().(types.RefValue); ok {
 			e.Stack.Push(e.Vars[ref.Key])
 		}
 	},
 	"swap": func(e *Env) {
-		if e.Stack.top < 1 {
-			return
-		}
 		e.Stack.Swap()
 	},
 	"I": func(e *Env) { e.Stack.Push(e.Return.Peek()) },
 	"insert": func(e *Env) {
 		val := e.Stack.Pop()
-		if collection, ok := e.Stack.Peek().(Collection); ok {
+		if collection, ok := e.Stack.Peek().(types.Collection); ok {
 			collection.Insert(val)
 		}
 	},
 	"open": func(e *Env) {
-		name, ok := e.Stack.Pop().(StringValue)
+		name, ok := e.Stack.Pop().(types.StringValue)
 		if !ok {
 			return
 		}
@@ -106,16 +105,16 @@ var Builtin = map[string]FuncValue{
 			e.Stack.PushNum(1)
 			return
 		}
-		pipe := &PipeValue{ValuePipe, file}
+		pipe := &types.PipeValue{types.ValuePipe, file}
 		e.Stack.Push(pipe)
 		e.Stack.PushNum(0)
 	},
 	"dial": func(e *Env) {
-		addr, ok := e.Stack.Pop().(StringValue)
+		addr, ok := e.Stack.Pop().(types.StringValue)
 		if !ok {
 			return
 		}
-		prot, ok := e.Stack.Pop().(StringValue)
+		prot, ok := e.Stack.Pop().(types.StringValue)
 		if !ok {
 			return
 		}
@@ -125,13 +124,13 @@ var Builtin = map[string]FuncValue{
 			e.Stack.PushNum(1)
 			return
 		}
-		pipe := &PipeValue{ValuePipe, conn}
+		pipe := &types.PipeValue{types.ValuePipe, conn}
 		e.Stack.Push(pipe)
 		e.Stack.PushNum(0)
 	},
 	"send": func(e *Env) {
 		payload := e.Stack.Pop()
-		p, ok := e.Stack.Peek().(*PipeValue)
+		p, ok := e.Stack.Peek().(*types.PipeValue)
 		if !ok {
 			return
 		}
@@ -145,7 +144,7 @@ var Builtin = map[string]FuncValue{
 		e.Stack.PushNum(0)
 	},
 	"close": func(e *Env) {
-		pipe, ok := e.Stack.Peek().(*PipeValue)
+		pipe, ok := e.Stack.Peek().(*types.PipeValue)
 		if !ok {
 			return
 		}
@@ -158,11 +157,11 @@ var Builtin = map[string]FuncValue{
 		e.Stack.Drop()
 	},
 	"recv": func(e *Env) {
-		arg, ok := e.Stack.Pop().(NumValue)
+		arg, ok := e.Stack.Pop().(types.NumValue)
 		if !ok {
 			return
 		}
-		pipe, ok := e.Stack.Peek().(*PipeValue)
+		pipe, ok := e.Stack.Peek().(*types.PipeValue)
 		if !ok {
 			return
 		}
@@ -179,15 +178,15 @@ var Builtin = map[string]FuncValue{
 	},
 	"#": func(e *Env) {
 		v := e.Stack.Pop()
-		if indexable, ok := e.Stack.Peek().(Indexable); ok {
+		if indexable, ok := e.Stack.Peek().(types.Indexable); ok {
 			e.Stack.Push(indexable.Index(v))
 		}
 	},
 	"len": func(e *Env) {
-		sizer, ok := e.Stack.Peek().(Sizer)
+		sizer, ok := e.Stack.Peek().(types.Sizer)
 		if !ok {
 			return
 		}
-		e.Stack.Push(sizer.Len())
+		e.Stack.Push(types.NewNum(float64(sizer.Len())))
 	},
 }
