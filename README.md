@@ -181,6 +181,7 @@ import (
 
 	"github.com/bruston/roost/parser"
 	"github.com/bruston/roost/runtime"
+    "github.com/bruston/roost/types"
 )
 
 func main() {
@@ -210,11 +211,11 @@ func (s scriptRunner) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	env := runtime.New(10)
 	env.Stack.PushString(path.Base(r.URL.Path))
-	if err := runtime.Eval(env, ast); err != nil {
+	if err := parser.Eval(env, ast); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if env.Stack.Len() == 1 && env.Stack.Peek().Type() == runtime.ValueString {
+	if env.Stack.Len() == 1 && env.Stack.Peek().Type() == types.ValueString {
 		fmt.Fprintf(w, "%s\n", template.HTMLEscapeString(env.Stack.Pop().Value().(string)))
 	}
 }

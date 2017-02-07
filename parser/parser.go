@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	"github.com/bruston/roost/lexer"
+	"github.com/bruston/roost/runtime"
+	"github.com/bruston/roost/types"
 )
 
 type Parser struct {
@@ -20,7 +22,8 @@ func New(r io.Reader) *Parser {
 	return p
 }
 
-type Node interface{}
+type Node interface {
+}
 
 type NodeWord struct{ Identifier string }
 
@@ -218,4 +221,134 @@ func Walk(v Visitor, node Node) {
 	if v = v.Visit(node); v == nil {
 		return
 	}
+}
+
+func funcFromDef(ev *Evaluator, n *NodeWordDef) runtime.FuncValue {
+	return runtime.FuncValue(func(e *runtime.Env) {
+		for _, c := range n.Body {
+			Walk(ev, c)
+		}
+	})
+}
+
+func (ev *Evaluator) Visit(node Node) Visitor {
+	defer func() {
+		if r := recover(); r != nil {
+			ev.err = runtime.ErrStackError
+		}
+	}()
+	switch n := node.(type) {
+	case *NodeWordDef:
+		ev.env.Words[n.Identifier] = funcFromDef(ev, n)
+	case NodeWord:
+		if word, ok := ev.env.Words[n.Identifier]; ok {
+			word(ev.env)
+			return ev
+		}
+		if word, ok := ev.env.Builtin[n.Identifier]; ok {
+			word(ev.env)
+		}
+	case NodeStringLit:
+		ev.env.Stack.PushString(n.Value)
+	case NodeNumLit:
+		ev.env.Stack.PushNum(n.Value)
+	case NodeVarDef:
+		ref := NodeRef(n.Identifier)
+		ev.env.Words[n.Identifier] = funcFromDef(ev, &NodeWordDef{
+			Identifier: n.Identifier,
+			Body:       []Node{ref},
+		})
+		ev.env.Stack.Push(types.NewRef(n.Identifier))
+	case NodeRef:
+		ev.env.Stack.Push(types.NewRef(string(n)))
+	case *NodeIf:
+		cond := ev.env.Stack.Pop()
+		if cond.Value() == true || cond.Value() == 1 {
+			for _, c := range n.Body {
+				Walk(ev, c)
+			}
+			return ev
+		}
+		for _, c := range n.Else.Body {
+			Walk(ev, c)
+		}
+	case *NodeFor:
+		ev.env.Stack.Swap()
+		ev.env.Return.Push(ev.env.Stack.Pop())
+		ev.env.Return.Push(ev.env.Stack.Pop())
+		for {
+			index := ev.env.Return.Pop()
+			limit := ev.env.Return.Peek()
+			if index.Type() != types.ValueNum || limit.Type() != types.ValueNum {
+				return ev
+			}
+			if index.Value().(float64) < limit.Value().(float64) || limit.Value().(float64) == 0 {
+				ev.env.Return.Push(index)
+				for _, c := range n.Body {
+					Walk(ev, c)
+				}
+				ev.env.Return.Drop()
+				ev.env.Return.PushNum(index.Value().(float64) + 1)
+				continue
+			}
+			break
+		}
+	case *NodeCollection:
+		collection := newCollection(n.Type)
+		for _, node := range n.Body {
+			collection.Insert(ev.evalNode(node))
+		}
+		ev.env.Stack.Push(collection)
+	}
+	return ev
+}
+
+func newCollection(n CollectionType) types.Collection {
+	if n == SliceCollection {
+		return &types.SliceValue{ValueType: types.ValueSlice}
+	}
+	return nil
+}
+
+func (ev *Evaluator) evalNode(node Node) types.Value {
+	switch n := node.(type) {
+	case NodeNumLit:
+		return types.NewNum(n.Value)
+	case NodeStringLit:
+		return types.NewString(n.Value)
+	case *NodeCollection:
+		collection := newCollection(n.Type)
+		for _, c := range n.Body {
+			collection.Insert(ev.evalNode(c))
+		}
+		return collection
+	case NodeWord:
+		if n.Identifier == "true" {
+			return types.NewBool(true)
+		}
+		if n.Identifier == "false" {
+			return types.NewBool(false)
+		}
+	case NodeRef:
+		// TODO
+	}
+	return nil
+}
+
+func Eval(env *runtime.Env, ast []Node) error {
+	eval := &Evaluator{
+		env: env,
+	}
+	for _, node := range ast {
+		if eval.err != nil {
+			break
+		}
+		Walk(eval, node)
+	}
+	return eval.err
+}
+
+type Evaluator struct {
+	env *runtime.Env
+	err error
 }

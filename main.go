@@ -32,7 +32,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		runtime.Eval(env, ast)
+		parser.Eval(env, ast)
 		return
 	}
 
@@ -46,7 +46,7 @@ func main() {
 		if err != nil {
 			log.Print(err)
 		}
-		runtime.Eval(env, ast)
+		parser.Eval(env, ast)
 		fmt.Printf("\nrepl> ")
 	}
 	if scanner.Err() != nil {

@@ -41,7 +41,7 @@ func TestEndToEnd(t *testing.T) {
 		env := runtime.New(1024)
 		buf := &bytes.Buffer{}
 		env.Stdout = buf
-		if err := runtime.Eval(env, ast); err != tt.err {
+		if err := parser.Eval(env, ast); err != tt.err {
 			t.Errorf("%d. code %s\nshould produce error: %v but received: %v", i, tt.code, tt.err, err)
 		}
 		if buf.String() != tt.expected {
